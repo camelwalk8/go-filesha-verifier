@@ -24,7 +24,31 @@ Orchestrates all components:
 6. Handle graceful shutdown on SIGINT/SIGTERM
 */
 
+// Build-time variables injected via -ldflags during compilation
+var (
+	version   string // Application version (e.g., "v1.0.0")
+	buildTime string // Build timestamp in ISO 8601 format
+	buildID   string // SHA256 hash of the compiled binary
+	release   string // Release type: PRODUCTION, DEVELOPMENT, etc.
+)
+
 func main() {
+
+	PrintVersionInfo("Go FTP Transfer Service", release, version, buildTime, buildID)
+
+	if release == "PRODUCTION" {
+		fmt.Println("\nValidating release version...")
+		if err := ValidateVersion(version, buildTime, buildID); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Release verification failed\n%v\n", err)
+			fmt.Fprintln(os.Stderr, "\nThis indicates a potential version mismatch or tampering.")
+			fmt.Fprintln(os.Stderr, "Please ensure you're running the correct binary with matching release notes.")
+			os.Exit(1)
+		}
+		fmt.Println("✓ Release verification successful - Binary matches release notes")
+	} else {
+		fmt.Printf("\nRunning in %s mode - Skipping version validation\n", release)
+	}
+
 	// Load configuration
 	config, err := LoadConfig("config.yaml")
 	if err != nil {

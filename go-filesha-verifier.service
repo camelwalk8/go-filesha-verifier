@@ -1,0 +1,25 @@
+[Unit]
+Description=File SHA256 Verification Service
+Documentation=See in Release Notes
+After=network.target vsftpd.service
+
+[Service]
+Type=simple
+User=auser
+Group=auser
+WorkingDirectory=/home/auser/projects/go-filesha-verifier
+ExecStart=/home/auser/projects/go-filesha-verifier/go-filesha-verifier
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

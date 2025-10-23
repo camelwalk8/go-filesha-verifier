@@ -1,0 +1,455 @@
+appName: go-filesha-verifier
+appVersion: v1.0.0
+appSummary:
+  project: Go File SHA Verifier Project Summary
+  overview: 'go-filesha-verifier is a high-performance SHA256 file verification service
+    designed for vsftpd environments on Rocky Linux. It automatically monitors upload
+    directories, verifies files against their .sha256 checksums using concurrent processing,
+    and moves verified files to destination folders with comprehensive audit logging.
+    Failed verifications are automatically moved to a dead-letter queue after configurable
+    retry timeouts.
+
+    '
+  core_functionality:
+  - Automatically scans source directories for data files and their corresponding .sha256 files
+  - Performs concurrent SHA256 verification using configurable worker pools
+  - Implements time-based retry logic with configurable timeout periods
+  - Moves successfully verified files to verified folder and removes .sha256 files
+  - Moves failed files to DLQ (Dead Letter Queue) after retry timeout expires
+  - Maintains detailed CSV logs of all verification operations and runtime statistics
+  - Implements graceful shutdown and signal handling for production environments
+  - Supports multiple file format filters with wildcard pattern matching
+  key_features:
+  - Concurrent Processing: Configurable worker pool (default 10) for parallel SHA256 verification
+  - Streaming Verification: Large buffer (8MB) for efficient hash computation without loading entire files
+  - Smart File Pairing: Automatically matches data files with their .sha256 counterparts
+  - Time-Based Retry: Configurable retry timeout (default 30s) before moving to DLQ
+  - Automatic DLQ Management: Failed verifications moved to dead-letter queue with both files
+  - Archive Management: Successfully verified files moved to destination, .sha256 files deleted
+  - Statistics Tracking: Comprehensive CSV logging of verifications and performance metrics
+  - Production Ready: Graceful shutdown, thread-safe operations, and systemd integration
+  - Configurable Filters: Flexible file pattern matching (*.zip, *.tar.gz, etc.)
+  - Real-time Logging: Structured logging with DEBUG/INFO/WARN/ERROR levels
+  technical_specifications:
+  - Written in Go with strict separation of concerns architecture
+  - Single-pass streaming SHA256 computation for memory efficiency
+  - Thread-safe components using sync.RWMutex for concurrent access
+  - Pipeline-based architecture: Scanner → Tracker → Coordinator → Workers → File Operations
+  - YAML-based configuration for all operational parameters
+  - CSV output for verification history and runtime statistics
+  - Compiles to single statically-linked binary with no runtime dependencies
+  - Buffered CSV writes with configurable flush intervals for performance
+  - In-memory file pair tracking with O(1) lookup performance
+  - Supports Linux (Rocky Linux, RHEL, Ubuntu, etc.)
+  use_cases:
+  - vsftpd upload directory monitoring with automated SHA256 verification
+  - Data integrity validation for incoming file transfers
+  - Automated file processing pipelines requiring cryptographic verification
+  - High-volume file verification scenarios with thousands of concurrent files
+  - Production environments requiring verification audit trails
+  - Systems requiring separation of verified and failed files
+  - Compliance scenarios requiring proof of data integrity
+  summary: 'go-filesha-verifier provides a robust, production-ready solution for automated
+    SHA256 file verification with time-based retry logic, dead-letter queue management,
+    comprehensive audit logging, and high-performance concurrent processing capabilities.
+
+    '
+configuration_parameters:
+  appVersion: Configuration schema version (string, e.g. v1.0.0)
+  kind: Execution mode (string, e.g. "run as service")
+  appName: Application identifier (string, e.g. file-verifier)
+  spec.source.folder: Source directory to monitor for files (string, absolute path, e.g. /var/ftp/pub/upload)
+  spec.source.periodicScanInterval: Scan interval for new files (duration, e.g. 2s, 5s, 10s, default 2s)
+  spec.verification.retryTimeout: Total time to retry verification before moving to DLQ (duration, e.g. 30s, 5m, default 30s). If a file arrives at 10:00:01 and retryTimeout is 300s (5 minutes), verification attempts continue until 10:05:01. After this deadline, both the data file and .sha256 file are moved to the DLQ folder.
+  spec.verification.bufferSize: Buffer size for reading files during SHA256 computation (integer, bytes, default 8388608 = 8MB). Larger buffers improve performance for large files but consume more memory per worker. Recommended values are 4MB (4194304), 8MB (8388608), or 16MB (16777216).
+  spec.verification.fileFilters: File patterns to process (array of strings with wildcards, e.g. ["*.zip", "*.tar.gz", "*.bin"]). Only files matching these patterns will be processed. Corresponding .sha256 files are automatically detected.
+  spec.destination.verifiedFolder: Destination directory for successfully verified files (string, absolute path). Automatically created if missing.
+  spec.destination.dlqFolder: Dead Letter Queue directory for failed verifications (string, absolute path). Both data file and .sha256 file are moved here after retry timeout. Automatically created if missing.
+  spec.destination.removeFromSource: Remove files from source after successful move (boolean, true/false, default true). When true, files are moved (rename or copy+delete). When false, files are copied only.
+  spec.concurrency.workers: Number of parallel verification workers (integer, range 1-100, default 10, recommended 5-20). Each worker can verify one file at a time. More workers increase throughput but consume more memory (workers × bufferSize).
+  spec.concurrency.queueSize: Job queue buffer size (integer, range 10-10000, default 500, recommended 10-100x workers). Prevents blocking when scanner discovers files faster than workers can process. Larger queues handle burst loads better but consume more memory.
+  spec.output.verificationFile: Verification log CSV filename (string, relative or absolute path, default "verification.csv"). Contains only successful verifications with columns Timestamp, Filename, SHA256, Size_Bytes, Size_KB, Duration_Seconds.
+  spec.output.statsFile: Statistics CSV filename (string, relative or absolute path, default "stats.csv"). Contains periodic statistics with columns Timestamp, TotalProcessed, SuccessCount, FailureCount, PendingCount, AverageDuration.
+  spec.output.flushInterval: CSV flush to disk interval (duration, e.g. 10s, 30s, 1m, default 10s). Controls how often CSV buffers are written to disk. Shorter intervals ensure data is persisted quickly but increase disk I/O. Longer intervals improve performance but risk losing more data on crash.
+  spec.logging.level: Log verbosity (string, values DEBUG/INFO/WARN/ERROR, default INFO). DEBUG shows all operations including file discoveries and pairing. INFO shows key events like verifications and errors. WARN shows only warnings and errors. ERROR shows only errors.
+usage:
+- 'Running manually:'
+- cd /home/auser/projects/go-filesha-verifier
+- ./go-filesha-verifier
+- 'Run as a Linux systemd service for continuous monitoring and automatic verification'
+- 'Configuration file (config.yaml) must be in the same directory as the binary'
+- 'Press Ctrl+C for graceful shutdown with proper cleanup'
+deployment:
+  environment: Production
+  server: Linux (Rocky Linux, RHEL, Ubuntu, or compatible)
+  deployment_strategy: Manual Deployment
+  steps:
+  - Stop and disable the go-filesha-verifier service if it is already running. Create the service if it does not exist.
+  - 'Copy the following files to /home/auser/projects/go-filesha-verifier:'
+  - '   go-filesha-verifier BINARY FILE'
+  - '   config.yaml'
+  - '   go-filesha-verifier.service (systemd service file)'
+  - '   README.md, QUICKSTART.md, ARCHITECTURE.md (documentation files)'
+  - Create required directories as specified in config file (source, verified, dlq folders are auto-created)
+  - Ensure proper permissions for all directories (readable source, writable verified and dlq)
+  - Configure source folder path in config.yaml (typically /var/ftp/pub/upload for vsftpd)
+  - Set appropriate file filters in config.yaml based on expected file types
+  - Enable and start the go-filesha-verifier service
+  - Verify logs for successful initialization and file processing
+  - Monitor verification.csv and stats.csv for operation confirmation
+versions:
+- version: v1.0.0
+  datetime: '2025-10-23T10:11:23Z'
+  build_id: a2b9a5f8bb601a3154cde1d7a6d780c5ad5ef9e82388bca307c4b88d3ca98246
+  summary: Initial production release of go-filesha-verifier with concurrent SHA256 verification, time-based retry logic, and comprehensive statistics tracking.
+  changes:
+  - feature: Modular architecture with strict separation of concerns
+    details: 'Implements clean separation across flat file structure:
+
+      types.go: All data structures and contracts (Config, FilePair, VerificationJob, VerificationResult, Statistics)
+
+      config.go: YAML configuration loading, validation, and automatic directory creation
+
+      file_scanner.go: Directory scanning and file discovery (discovers both data files and .sha256 files)
+
+      file_tracker.go: File pair lifecycle management and retry timeout tracking
+
+      sha_verifier.go: SHA256 hash computation and verification (pure functions, no state)
+
+      file_operations.go: File move and delete operations (handles verified and DLQ destinations)
+
+      csv_logger.go: Buffered CSV writing with thread-safe operations
+
+      statistics.go: Runtime metrics tracking with thread-safe counters
+
+      worker_pool.go: Concurrent job processing and result handling
+
+      main.go: Application orchestration and lifecycle management
+
+      Each component has single, clear responsibility with no circular dependencies
+
+      '
+  - feature: High-performance concurrent verification with worker pool
+    details: 'Configurable number of concurrent workers for parallel SHA256 verification (workers parameter, default 10)
+
+      Fixed worker pool pattern prevents goroutine creation overhead
+
+      Each worker processes jobs from buffered channel (queueSize parameter, default 500)
+
+      Workers operate independently with no coordination overhead
+
+      Buffered job queue prevents blocking when files discovered faster than processing
+
+      Queue acts as buffer between coordinator (producer) and workers (consumers)
+
+      Automatic load balancing across available workers through Go channel semantics
+
+      Graceful worker shutdown coordination during application termination
+
+      Performance tuning recommendations:
+
+        - Low concurrency (1-5 workers): Limited CPU or testing scenarios
+
+        - Medium concurrency (5-15 workers): Standard deployments (recommended, default 10)
+
+        - High concurrency (15-50 workers): High-throughput requirements with fast disks
+
+        - Queue sizing: Recommended 10-100× worker count (default 500 for 10 workers)
+
+      Memory usage: Base ~50MB + (workers × bufferSize) = ~150MB for default config (10 workers × 8MB)
+
+      Workers handle SHA256 computation, file operations, logging, and statistics updates per job
+
+      '
+  - feature: Streaming SHA256 verification with large buffers
+    details: 'Configurable buffer size for file reading (default 8MB = 8388608 bytes)
+
+      Single-pass streaming computation never loads entire file into memory
+
+      Supports files of any size without memory concerns
+
+      Buffer sizes of 4MB, 8MB, or 16MB recommended based on file sizes
+
+      Reads .sha256 file format supporting hash-only or hash+filename formats
+
+      Case-insensitive hash comparison for maximum compatibility
+
+      Validates SHA256 file contains valid 64-character hex string
+
+      Returns both computed and expected hashes for audit logging
+
+      Direct byte-level operations in hot path for maximum performance
+
+      '
+  - feature: Smart file pair tracking with retry timeout management
+    details: 'In-memory map-based tracking of file pairs (data file + .sha256 file)
+
+      Automatically matches files like data.zip with data.zip.sha256
+
+      Tracks FirstSeen timestamp when file first discovered
+
+      HasBothFiles flag indicates when pair is ready for verification
+
+      Time-based retry logic: Files remain in source until retry timeout expires
+
+      Retry timeout calculated from FirstSeen time, not per-attempt
+
+      If file arrives at 10:00:01 with 300s timeout, deadline is 10:05:01
+
+      Verification attempts continue until deadline, then move to DLQ
+
+      O(1) lookup performance for file pair queries
+
+      Thread-safe operations using sync.RWMutex for concurrent access
+
+      Removes files from tracking after successful verification or DLQ move
+
+      '
+  - feature: Automatic dead-letter queue (DLQ) management
+    details: 'Failed verifications automatically moved to DLQ after retry timeout expires
+
+      Both data file AND .sha256 file moved together to DLQ folder
+
+      DLQ folder automatically created if missing during initialization
+
+      Files in DLQ can be manually reviewed and reprocessed if needed
+
+      Prevents infinite retry loops while maintaining audit trail
+
+      Statistics track failure count for monitoring and alerting
+
+      Handles filename conflicts in DLQ with timestamp-based unique naming
+
+      Clear separation between verified (success) and DLQ (failure) destinations
+
+      '
+  - feature: Intelligent file scanning with periodic discovery
+    details: 'Configurable scan interval (default 2 seconds) for responsive file detection
+
+      Discovers both data files and their .sha256 counterparts
+
+      Supports multiple file filters with wildcard patterns (*.zip, *.tar.gz, etc.)
+
+      Optimization: When data file found, immediately checks for .sha256 file
+
+      Reduces pairing latency - no need to wait for next scan cycle
+
+      Skips directories, processes only regular files
+
+      Handles large directories efficiently with streaming directory reads
+
+      Non-blocking operation runs in dedicated goroutine
+
+      Graceful start/stop with context cancellation
+
+      '
+  - feature: Comprehensive statistics and audit logging
+    details: 'Generates two CSV files for detailed tracking:
+
+      verification.csv: Individual successful verifications (Timestamp, Filename, SHA256, Size_Bytes, Size_KB, Duration_Seconds)
+
+      stats.csv: Periodic statistics snapshot (Timestamp, TotalProcessed, SuccessCount, FailureCount, PendingCount, AverageDuration)
+
+      Only successful verifications logged to verification.csv (failed files tracked in statistics only)
+
+      Tracks success/failure rates, pending count, and average processing duration
+
+      Records SHA256 hash values for cryptographic audit trail
+
+      Includes file sizes in both bytes and kilobytes for analysis
+
+      Captures verification duration for performance monitoring
+
+      Statistics logged every 30 seconds automatically
+
+      CSV format enables easy import into analysis tools (Excel, Python, databases)
+
+      Buffered writes with configurable flush interval (default 10s) for performance
+
+      Thread-safe logging supports concurrent access from multiple workers
+
+      Automatic CSV header creation for new files
+
+      '
+  - feature: Production-ready service integration
+    details: 'Systemd service configuration for automatic startup and monitoring
+
+      Graceful shutdown handling for SIGTERM and SIGINT signals
+
+      Proper cleanup of resources during shutdown (final CSV flush, worker coordination)
+
+      Logs to stdout/stderr for systemd journal integration
+
+      Coordinator loop handles job submission and timeout management
+
+      Signal handling prevents data loss on shutdown
+
+      Runs continuously monitoring source directory
+
+      Restart policies configurable in systemd service file
+
+      Final statistics printed on clean shutdown
+
+      Context-based cancellation propagates through all components
+
+      WaitGroups ensure all goroutines complete before exit
+
+      '
+  - feature: Flexible YAML-based configuration system
+    details: 'Single config.yaml file for all operational parameters
+
+      Comprehensive validation of all configuration values on startup
+
+      Automatic creation of destination directories (verified and DLQ folders)
+
+      Validates source folder exists before starting operations
+
+      Validates positive durations for scan intervals and timeouts
+
+      Validates buffer sizes are positive integers
+
+      Validates worker count and queue size are within reasonable ranges
+
+      Validates logging level is one of DEBUG/INFO/WARN/ERROR
+
+      Validates file filters array is not empty
+
+      Support for both relative and absolute paths
+
+      Human-readable duration formats (2s, 30s, 5m, 1h)
+
+      Byte size formats (8388608 for 8MB)
+
+      Clear error messages for configuration problems
+
+      PrintConfig() function displays loaded configuration for verification
+
+      '
+  - feature: Thread-safe concurrent operations
+    details: 'All shared state protected by appropriate synchronization primitives:
+
+      FileTracker: sync.RWMutex for file pair map (concurrent reads, exclusive writes)
+
+      StatsTracker: sync.RWMutex for counters (concurrent reads, exclusive writes)
+
+      CSVLogger: sync.Mutex for CSV writers (exclusive writes)
+
+      Worker pool uses buffered channels (thread-safe by Go design)
+
+      No data races verified through careful design and review
+
+      Read locks (RLock) used for queries to maximize concurrency
+
+      Write locks (Lock) used only for state mutations
+
+      Snapshot methods return copies to prevent race conditions
+
+      Multiple workers safely update statistics and logs concurrently
+
+      '
+  - feature: Efficient file operations with cross-filesystem support
+    details: 'Smart move implementation: attempts os.Rename first (fast, atomic)
+
+      Falls back to copy+delete for cross-filesystem moves
+
+      Preserves file permissions during copy operations
+
+      Syncs destination files to disk for durability
+
+      Handles filename conflicts with timestamp-based unique naming
+
+      Separate operations for verified destination and DLQ destination
+
+      Deletes .sha256 files after successful verification
+
+      Moves both files together to DLQ on failure
+
+      Error handling with detailed logging for troubleshooting
+
+      GetFileSize() helper for size queries
+
+      FileExists() helper for existence checks
+
+      '
+  - feature: Performance optimizations throughout stack
+    details: 'Fixed worker pool eliminates goroutine creation overhead
+
+      Large buffers (8MB) reduce system call frequency
+
+      Buffered channels (500 capacity) prevent blocking
+
+      Batch CSV writes reduce disk I/O (flush every 10s)
+
+      In-memory tracking with O(1) map lookups
+
+      Single-pass streaming for SHA256 computation
+
+      Efficient directory reading with os.ReadDir
+
+      Minimal string allocations in hot paths
+
+      Direct byte operations for hash comparison
+
+      Wildcard pattern matching with filepath.Match
+
+      Expected throughput: 100+ small files/sec, disk-limited for large files
+
+      '
+verification:
+  version_check: 'Build and deploy the application
+
+    Verify binary starts successfully with config.yaml
+
+    Create test file: echo "test" > /tmp/test.zip
+
+    Generate .sha256: sha256sum /tmp/test.zip | awk "{print $1}" > /tmp/test.zip.sha256
+
+    Place both files in source directory
+
+    Confirm files are discovered by scanner (DEBUG log shows "Found data file" and "Found SHA256 file")
+
+    Verify file pair is tracked (DEBUG log shows "Found complete pair")
+
+    Confirm coordinator creates VerificationJob (DEBUG log shows "Processing")
+
+    Verify SHA256 verification succeeds (INFO log shows "✓ SUCCESS")
+
+    Check test.zip moved to verified folder
+
+    Check test.zip.sha256 deleted from source
+
+    Verify entry added to verification.csv with correct hash, size, and duration
+
+    Test failure case: corrupt .sha256 file with wrong hash
+
+    Verify retry behavior: file stays in source until retry timeout
+
+    Confirm both files moved to DLQ after timeout (INFO log shows "moving to DLQ")
+
+    Check stats.csv updated with failure count
+
+    Test graceful shutdown: send SIGTERM (kill -TERM <pid>)
+
+    Verify final statistics printed and CSV files flushed
+
+    Test worker pool scaling: set workers to 20 in config, verify concurrency
+
+    Test large files: verify memory usage stays bounded
+
+    Verify buffer size impact: test with 4MB vs 16MB buffers
+
+    Test file filters: verify only matching patterns processed
+
+    Test systemd service: systemctl start/stop/status go-filesha-verifier
+
+    Verify logs in systemd journal: journalctl -u go-filesha-verifier -f
+
+    Monitor performance: watch verification.csv and stats.csv growth
+
+    Stress test: place 1000 files simultaneously, verify all processed
+
+    Validate version: ./go-filesha-verifier --version (if version flag implemented)
+
+    Check memory usage: monitor RSS during operation (should be ~150MB for default config)
+
+    Verify thread safety: no crashes or data corruption under concurrent load'
