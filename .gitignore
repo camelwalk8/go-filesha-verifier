@@ -1,0 +1,126 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+go-ftp-transfer
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# Go build cache
+.cache/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# GoLand
+*.iml
+.idea/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Project-specific: FTP uploader directories
+out/
+archive/
+mock-ftp-server/
+
+# Project-specific: Statistics and logs
+*.csv
+stats.csv
+transfers.csv
+*.csv
+*.log
+
+# Project-specific: Test files
+test*.zip
+test*.txt
+file_*.txt
+file_*.dat
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Environment and config files with sensitive data
+.env
+.env.local
+.env.*.local
+config.local.yaml
+config.prod.yaml
+secrets.yaml
+
+# OS-specific files
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Debug files
+debug
+debug.test
+__debug_bin
+__debug_bin*
+
+# Air (live reload tool)
+tmp/
+.air.toml
+
+# Profiling data
+*.prof
+*.pprof
+cpu.prof
+mem.prof
+
+# Build artifacts
+dist/
+build/
+bin/
+builds/
+
+# Documentation build
+docs/_build/
+
+# Python (if using any Python tools)
+__pycache__/
+*.py[cod]
+venv/

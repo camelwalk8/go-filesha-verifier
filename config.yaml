@@ -1,0 +1,47 @@
+---
+appVersion: v1.0.0
+kind: run as service
+appName: file-verifier
+description: >-
+  SHA256 File Verification Service - Configuration
+  
+  This service automatically monitors a source folder for files and their 
+  corresponding .sha256 files. It verifies the SHA256 hash of each file against
+  its .sha256 file. Successfully verified files are moved to the destination folder,
+  while files that fail verification after the retry timeout are moved to a DLQ folder.
+  All operations are logged to CSV files for audit purposes.
+
+spec:
+  source:
+    folder: /var/ftp/pub/upload
+    periodicScanInterval: 30s     # How often to scan for new files
+  
+  verification:
+    # Time-based retry: If file arrives at 10:00:01 and retryTimeout is 300s,
+    # verification attempts continue until 10:05:01
+    retryTimeout: 30s           # Total time to retry verification (e.g., 5 minutes)
+    bufferSize: 8388608          # 8MB - Buffer size for reading large files
+    
+    fileFilters:
+      - "*.zip"
+     
+  
+  destination:
+    verifiedFolder: /home/auser/projects/go-filesha-verifier/in     # Destination for successfully verified files
+    dlqFolder: /home/auser/projects/go-filesha-verifier/failed            # Dead Letter Queue for failed verifications
+    removeFromSource: true                # Remove files from source after move
+  
+  concurrency:
+    workers: 10                  # Number of parallel verification workers
+    queueSize: 500              # Max queue size for pending jobs
+  
+  output:
+    verificationFile: "verification.csv"       # CSV log of all verification attempts
+    statsFile: "stats.csv"
+    flushInterval: 10s                     # Flush to disk interval
+    
+    # CSV columns: Timestamp,Filename,SHA256,Size_Bytes,Size_KB,Duration_Seconds
+    # Only successful verifications are logged
+  
+  logging:
+    level: DEBUG                  # DEBUG, INFO, WARN, ERROR
