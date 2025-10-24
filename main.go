@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -34,6 +35,41 @@ var (
 
 func main() {
 
+	// Default to DEVELOPMENT if not set at build time
+	if release == "" {
+		release = "DEVELOPMENT"
+	}
+
+	// Custom usage message
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Go File SHA Verifier - Verifies file integrity using SHA256 checksums\n")
+		fmt.Fprintf(os.Stderr, "Release: %s", release)
+		if version != "" {
+			fmt.Fprintf(os.Stderr, " | Version: %s", version)
+		}
+		fmt.Fprintf(os.Stderr, "\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  %s                          # Run with config.yaml from current directory\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --config /path/to/config.yaml\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --version                # Show version information\n", os.Args[0])
+	}
+
+	// Define flags
+	configFile := flag.String("config", "config.yaml", "Path to configuration file (default: config.yaml in current directory)")
+	showVersion := flag.Bool("version", false, "Print version information and exit")
+	flag.BoolVar(showVersion, "v", false, "Print version information and exit (shorthand)")
+	flag.Parse()
+
+	// Handle --version flag
+	if *showVersion {
+		PrintVersionInfo("Go FTP Transfer Service", release, version, buildTime, buildID)
+		fmt.Printf("\nRelease: %s\n", release)
+		os.Exit(0)
+	}
+
 	PrintVersionInfo("Go FTP Transfer Service", release, version, buildTime, buildID)
 
 	if release == "PRODUCTION" {
@@ -50,7 +86,7 @@ func main() {
 	}
 
 	// Load configuration
-	config, err := LoadConfig("config.yaml")
+	config, err := LoadConfig(*configFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
 		os.Exit(1)
