@@ -99,8 +99,8 @@ deployment:
   - Monitor verification.csv and stats.csv for operation confirmation
 versions:
 - version: v1.0.0
-  datetime: '2025-10-24T12:49:06Z'
-  build_id: 814cdfcfb7b3dddc6655197012dfcc81acd4271e8a38bdbabfb314f78a0d3adc
+  datetime: '2025-10-24T12:57:05Z'
+  build_id: 7fda28abf144f40a6cc8fa72286847af866d4f9523928e825ee7e58d80e78070
   summary: Initial production release of go-filesha-verifier with concurrent SHA256 verification, time-based retry logic, and comprehensive statistics tracking.
   changes:
   - feature: Modular architecture with strict separation of concerns
